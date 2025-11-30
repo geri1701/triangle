@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Dynamisches Dreieck:</title>
+<style>
+  body{background:#111;color:#eee;font-family:sans-serif;padding:1rem;}
+  h1{margin-top:0;}
+  .flex{display:flex;gap:1rem;flex-wrap:wrap;}
+  .panel{background:#181818;padding:1rem;border-radius:.75rem;box-shadow:0 0 10px #000;}
+  label{display:inline-block;width:1.4rem;font-weight:bold;}
+  input[type=number]{width:4rem;background:#222;border:1px solid #444;color:#eee;padding:2px;}
+  .warn{color:#ff7f7f;height:1rem;}
+  svg{background:#222;border-radius:.75rem;box-shadow:0 0 12px #000;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;font-size:.9rem;}
+  .grid .k{font-weight:bold;}
+  text{fill:#ccc;}
+  </style>
+</head>
+<body>
+
+<h1>Dynamisches Dreieck:</h1>
+
+<div class="flex">
+  <div class="panel">
+    <h3>Seitenlängen</h3>
+
+    <div><label>L</label><input id="L" type="range" min="1" max="200" value="63">
+    <input id="L_num" type="number" min="1" max="200" value="63"></div>
+
+    <div><label>R</label><input id="R" type="range" min="1" max="200" value="82">
+    <input id="R_num" type="number" min="1" max="200" value="82"></div>
+
+    <div><label>U</label><input id="U" type="range" min="1" max="200" value="97">
+    <input id="U_num" type="number" min="1" max="200" value="97"></div>
+
+    <div class="warn" id="warn"></div>
+    A = (L+R−U)/2  •  B = (R+U−L)/2  •  C = (U+L−R)/2
+  </div>
+
+  <div>
+    <svg id="svg" width="640" height="420"></svg>
+
+    <div class="panel">
+      <h3>Berechnete Werte</h3>
+      <div class="grid">
+        <span class="k">L</span><span id="L_val"></span><span></span>
+        <span class="k">R</span><span id="R_val"></span><span></span>
+        <span class="k">U</span><span id="U_val"></span><span></span>
+        <span class="k">A</span><span id="A_val"></span><span>A=(L+R−U)/2</span>
+        <span class="k">B</span><span id="B_val"></span><span>B=(R+U−L)/2</span>
+        <span class="k">C</span><span id="C_val"></span><span>C=(U+L−R)/2</span>
+        <span class="k">s</span><span id="s_val"></span><span>s=(L+R+U)/2</span>
+        <span class="k">Fläche</span><span id="area_val"></span><span>Heron</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const g=id=>document.getElementById(id);
+["L","R","U"].forEach(x=>{
+  g(x).oninput=()=>{g(x+"_num").value=g(x).value;update();}
+  g(x+"_num").oninput=()=>{let v=Math.max(1,Math.min(200,g(x+"_num").value));g(x+"_num").value=v;g(x).value=v;update();}
+});
+
+function update(){
+  let L=+g("L").value, R=+g("R").value, U=+g("U").value;
+  g("L_val").textContent=L;
+  g("R_val").textContent=R;
+  g("U_val").textContent=U;
+
+  if(L+R<=U || R+U<=L || U+L<=R){
+    g("warn").textContent="⚠ Kein gültiges Dreieck!";
+    g("svg").innerHTML="";
+    return;
+  }
+  g("warn").textContent="";
+
+  let A=(L+R-U)/2, B=(R+U-L)/2, C=(U+L-R)/2;
+  let s=(L+R+U)/2;
+  let area=Math.sqrt(s*(s-L)*(s-R)*(s-U));
+
+  g("A_val").textContent=A.toFixed(2);
+  g("B_val").textContent=B.toFixed(2);
+  g("C_val").textContent=C.toFixed(2);
+  g("s_val").textContent=s.toFixed(2);
+  g("area_val").textContent=area.toFixed(2);
+
+  let Ax=0,Ay=0, Bx=U,By=0;
+  let xC=(R*R-L*L+U*U)/(2*U);
+  let yC=Math.sqrt(R*R-xC*xC);
+
+  let xs=[Ax,Bx,xC], ys=[Ay,By,yC];
+  let minX=Math.min(...xs), maxX=Math.max(...xs);
+  let minY=Math.min(...ys), maxY=Math.max(...ys);
+  let scale=Math.min(580/(maxX-minX),340/(maxY-minY));
+  const map=(x,y)=>[(x-minX)*scale+30,420-((y-minY)*scale+30)];
+
+  let Axy=map(Ax,Ay), Bxy=map(Bx,By), Cxy=map(xC,yC);
+  let Px=(Axy[0]+Bxy[0]+Cxy[0])/3, Py=(Axy[1]+Bxy[1]+Cxy[1])/3;
+
+  g("svg").innerHTML=`
+    <polygon points="${Axy} ${Bxy} ${Cxy}" fill="none" stroke="#eee" stroke-width="2"/>
+    <polygon points="${Axy} ${Bxy} ${Px},${Py}" fill="rgba(255,120,120,.3)"/>
+    <polygon points="${Bxy} ${Cxy} ${Px},${Py}" fill="rgba(120,255,160,.3)"/>
+    <polygon points="${Cxy} ${Axy} ${Px},${Py}" fill="rgba(120,180,255,.3)"/>
+
+    <circle cx="${Axy[0]}" cy="${Axy[1]}" r="4" fill="white"/>
+    <circle cx="${Bxy[0]}" cy="${Bxy[1]}" r="4" fill="white"/>
+    <circle cx="${Cxy[0]}" cy="${Cxy[1]}" r="4" fill="white"/>
+    <circle cx="${Px}" cy="${Py}" r="5" fill="gold"/>
+
+    <text x="${(Axy[0]+Bxy[0])/2+5}" y="${(Axy[1]+Bxy[1])/2-5}">U=${U}</text>
+    <text x="${(Axy[0]+Cxy[0])/2+5}" y="${(Axy[1]+Cxy[1])/2-5}">L=${L}</text>
+    <text x="${(Bxy[0]+Cxy[0])/2+5}" y="${(Bxy[1]+Cxy[1])/2-5}">R=${R}</text>
+
+    <text x="${(Axy[0]+Bxy[0]+Px)/3}" y="${(Axy[1]+Bxy[1]+Py)/3}">A=${A.toFixed(2)}</text>
+    <text x="${(Bxy[0]+Cxy[0]+Px)/3}" y="${(Bxy[1]+Cxy[1]+Py)/3}">B=${B.toFixed(2)}</text>
+    <text x="${(Cxy[0]+Axy[0]+Px)/3}" y="${(Cxy[1]+Axy[1]+Py)/3}">C=${C.toFixed(2)}</text>
+  `;
+}
+
+update();
+</script>
+</body>
+</html>
